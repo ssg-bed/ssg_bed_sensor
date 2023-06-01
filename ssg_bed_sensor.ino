@@ -1,56 +1,39 @@
-#include "motion.h"
+#include <Wire.h>
 #include <SoftwareSerial.h>
 
-Motion motion = Motion();
-SoftwareSerial mySerial(10, 11);
+#include "motion.h"
 
-bool is_insleep = false;
+#define PIN_LED 4
+#define PIN_PIR 5
+#define WIRE_ADDR 8
+
+Motion motion = Motion();
 
 void setup() {
-  motion.setDataPin(2);
+  motion.setDataPin(PIN_PIR);
   motion.setDuration(10000);
 
+  Wire.begin();
   Serial.begin(9600);
-  mySerial.begin(9600);
 
-  mySerial.write("AT");
+  pinMode(PIN_LED, OUTPUT);
 }
 
+
 void loop() {
-  if (Serial.available()) {
-    while (Serial.available()) {
-      mySerial.write(Serial.read());
-    }
-  }
-
-  if (mySerial.available()) {
-    while (mySerial.available()) {
-      Serial.write(mySerial.read());
-    }
-  }
-
-  delay(100);
-
   motion.update();
 
-  
-  if (is_insleep != motion.isInSleep()) {
-    // 값이 변할 때만 송신
-    is_insleep = motion.isInSleep();
-    if (motion.isInSleep()) {
-      mySerial.print("INSLEEP=TRUE");
-      Serial.println("[transmitted] insleep: true");
-    } else {
-      mySerial.print("INSLEEP=FALSE");
-      Serial.println("[transmitted] insleep: false");
-    }
-  }
+  Wire.beginTransmission(WIRE_ADDR);
+  Wire.write("INSLEEP=");
+  Wire.write(motion.isInSleep() ? "TRUE" : "FALSE");
+  Wire.endTransmission();
 
-  if (motion.isMotion()) {
-    Serial.println("[info] moving: true");
-  } else {
-    Serial.println("[info] moving: false");
-  }
+  digitalWrite(PIN_LED, motion.isMotion());
+
+  Serial.print("Motion:");
+  Serial.print(motion.isMotion());
+  Serial.print(" Sleep:");
+  Serial.println(motion.isInSleep());
 
   delay(1000);
 }

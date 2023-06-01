@@ -7,6 +7,7 @@ private:
 
   bool is_motion = false;
   bool is_insleep = false;
+  bool was_insleep = false;
 
   unsigned long motion_started_at = 0;
   unsigned long motion_continued_at = 0;
@@ -55,6 +56,7 @@ public:
   void update() {
     now = millis();
     is_motion = digitalRead(data_pin);
+    was_insleep = is_insleep;
 
     handleMotionStart();
     handleMotionContinue();
@@ -67,6 +69,10 @@ public:
 
   bool isInSleep() {
     return is_insleep;
+  }
+
+  bool wasInSleep() {
+    return was_insleep;
   }
 };
 

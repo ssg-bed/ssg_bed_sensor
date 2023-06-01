@@ -1,53 +1,56 @@
 #include "motion.h"
-#include "serial.h"
+#include <SoftwareSerial.h>
 
-Motion *motion;
-SerialHandler *serial_handler;
+Motion motion = Motion();
+SoftwareSerial mySerial(10, 11);
+
+bool is_insleep = false;
 
 void setup() {
-  SoftwareSerialBuilder *builder;
-  SoftwareSerial *serial;
-
-  motion = new Motion();
-  motion->setDataPin(2);
-  motion->setDuration(10000);
-
-  builder = new SoftwareSerialBuilder();
-  builder->setRxPin(3);
-  builder->setTxPin(4);
-  builder->setBaudRate(9600);
-
-  // serial = builder->buildAndListen();
-
-  serial = new SoftwareSerial(3, 4);
-
-  serial_handler = new SerialHandler(serial);
+  motion.setDataPin(2);
+  motion.setDuration(10000);
 
   Serial.begin(9600);
+  mySerial.begin(9600);
+
+  mySerial.write("AT");
 }
 
 void loop() {
-  motion->update();
-
-  if (motion->isInSleep()) {
-    serial_handler->transmit("INSLEEP=TRUE");
-    Serial.println("[transmitted] insleep: true");
-  } else {
-    serial_handler->transmit("INSLEEP=FALSE");
-    Serial.println("[transmitted] insleep: false");
-  }
-
-  if (motion->isMotion()) {
-    Serial.println("[transmitted] moving: true");
-  } else {
-    Serial.println("[transmitted] moving: false");
-  }
-
-  delay(200);
-
   if (Serial.available()) {
     while (Serial.available()) {
-      serial_handler->transmit(Serial.read());
+      mySerial.write(Serial.read());
     }
   }
+
+  if (mySerial.available()) {
+    while (mySerial.available()) {
+      Serial.write(mySerial.read());
+    }
+  }
+
+  delay(100);
+
+  motion.update();
+
+  
+  if (is_insleep != motion.isInSleep()) {
+    // 값이 변할 때만 송신
+    is_insleep = motion.isInSleep();
+    if (motion.isInSleep()) {
+      mySerial.print("INSLEEP=TRUE");
+      Serial.println("[transmitted] insleep: true");
+    } else {
+      mySerial.print("INSLEEP=FALSE");
+      Serial.println("[transmitted] insleep: false");
+    }
+  }
+
+  if (motion.isMotion()) {
+    Serial.println("[info] moving: true");
+  } else {
+    Serial.println("[info] moving: false");
+  }
+
+  delay(1000);
 }
